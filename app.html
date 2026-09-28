@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DuckMath</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 760px; margin: 0 auto; padding: 1em; color: #232a26; background: #f2f7f4; }
+  h1 { font-size: 1.5em; }
+  .card { background: #fff; border: 1px solid #d4e2d9; border-radius: 10px; padding: 1em 1.2em; margin: 1em 0; }
+  .card h2 { margin-top: 0; font-size: 1.1em; }
+  label { display: inline-block; min-width: 185px; margin: 0.3em 0; }
+  input, select { padding: 0.3em; border: 1px solid #aec4b5; border-radius: 6px; width: 110px; }
+  .out { background: #e9f2ec; border-left: 4px solid #2d5a43; padding: 0.6em 0.9em; border-radius: 0 8px 8px 0; margin-top: 0.7em; }
+  .preset { display:inline-block; margin: 0 0.4em 0.4em 0; padding: 0.25em 0.7em; background: #ddeadf; border-radius: 20px; cursor: pointer; font-size: 0.85em; border: 1px solid #aec4b5; }
+  .note { color: #55705f; font-size: 0.9em; }
+  a { color: #2d5a43; }
+</style>
+</head>
+<body>
+<h1>&#129414; DuckMath</h1>
+<p class="note">Constants: three ducks minimum. 4 sq ft coop and 10 sq ft run each. 0.4 lb of feed per duck per day. Realistic lay at 80% of the hatchery claim. A quarter gallon of drinking water each, daily. <a href="index.html">About</a></p>
+
+<div class="card">
+  <h2>1. Flock and space</h2>
+  <div>
+    <span class="preset" data-d="3">Three starters</span>
+    <span class="preset" data-d="5">Five layers</span>
+    <span class="preset" data-d="10">Ten (ambitious)</span>
+  </div>
+  <label for="ducks">Ducks:</label><input id="ducks" type="number" value="4" min="1">
+  <div class="out" id="spaceOut">-</div>
+  <div class="out" id="flockOut">-</div>
+</div>
+
+<div class="card">
+  <h2>2. Feed</h2>
+  <label for="bagLb">Bag size (lb):</label><input id="bagLb" type="number" value="50" min="5"><br>
+  <label for="bagCost">Bag cost ($):</label><input id="bagCost" type="number" value="22" min="0" step="0.5">
+  <div class="out" id="feedOut">-</div>
+</div>
+
+<div class="card">
+  <h2>3. Eggs, honestly</h2>
+  <label for="breed">Breed:</label>
+  <select id="breed">
+    <option value="campbell" selected>Khaki Campbell</option>
+    <option value="runner">Indian Runner</option>
+    <option value="pekin">Pekin</option>
+    <option value="muscovy">Muscovy</option>
+  </select>
+  <div class="out" id="eggOut">-</div>
+  <div class="out" id="breedOut">-</div>
+</div>
+
+<div class="card">
+  <h2>4. Water reality</h2>
+  <label for="pool">Pool/pond size (gal):</label><input id="pool" type="number" value="40" min="0">
+  <div class="out" id="waterOut">-</div>
+</div>
+
+<div class="card">
+  <h2>5. Cost per dozen</h2>
+  <div class="out" id="costOut">-</div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function str(id) { return document.getElementById(id).value; }
+  function fmt(n, d) { return n.toFixed(d === undefined ? 1 : d); }
+  var CLAIM = { campbell: 300, runner: 250, pekin: 200, muscovy: 180 };
+
+  function update() {
+    var d = Math.max(1, Math.round(num('ducks')));
+    var sp = DuckMath.spaceSqft(d);
+    document.getElementById('spaceOut').textContent =
+      d + ' ducks: ' + sp.coop + ' sq ft of coop, ' + sp.run + ' sq ft of run - they stamp mud out of anything smaller.';
+    document.getElementById('flockOut').textContent = DuckMath.flockVerdict(d);
+
+    var lbDay = DuckMath.feedLbDay(d, 0.4);
+    var days = DuckMath.bagDays(Math.max(1, num('bagLb')), d, 0.4);
+    document.getElementById('feedOut').textContent =
+      fmt(lbDay) + ' lb per day - a ' + num('bagLb') + ' lb bag lasts about ' + fmt(days, 0) + ' days.';
+
+    var claim = CLAIM[str('breed')];
+    var epd = DuckMath.eggsPerDay(d, claim);
+    document.getElementById('eggOut').textContent =
+      fmt(epd) + ' eggs a day, ' + fmt(epd * 7, 0) + ' a week - the honest 80% of the ' + claim + '-a-year catalog number.';
+    document.getElementById('breedOut').textContent = DuckMath.eggVerdict(str('breed'));
+
+    document.getElementById('waterOut').textContent =
+      fmt(DuckMath.waterGalDay(d)) + ' gal a day just to drink, heads dunked. ' + DuckMath.waterVerdict(num('pool'), d);
+
+    var perDozen = DuckMath.costPerDozen(num('bagCost'), Math.max(1, num('bagLb')), d, claim);
+    document.getElementById('costOut').textContent =
+      '$' + perDozen.toFixed(2) + ' per dozen in feed. ' + DuckMath.costVerdict(perDozen);
+  }
+
+  var presets = document.querySelectorAll('.preset');
+  for (var i = 0; i < presets.length; i++) {
+    presets[i].addEventListener('click', function () {
+      document.getElementById('ducks').value = this.getAttribute('data-d');
+      update();
+    });
+  }
+  var inputs = document.querySelectorAll('input, select');
+  for (var j = 0; j < inputs.length; j++) inputs[j].addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
